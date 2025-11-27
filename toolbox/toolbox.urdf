@@ -1,0 +1,819 @@
+<!-- Sid: The toolbox color was previously (0.76862745098039220171 0.20784313725490197178 0.15294117647058824705) -->
+<robot name="toolbox" xmlns:drake="http://drake.mit.edu">
+    <link name="body">
+        <visual>
+            <origin xyz="-0.14999999999999999445 0.2999999999999999889 0"
+                    rpy="-2.8042865368535819725e-17 -1.654361225106057113e-23 -3.9614402588306973713e-23"/>
+            <geometry>
+                <mesh filename="body.obj"/>
+            </geometry>
+            <material name="body_material">
+                <color rgba="0.15 0.15 0.15 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.14999999999999999445 0.2999999999999999889 0"
+                    rpy="-2.8042865368535819725e-17 -1.654361225106057113e-23 -3.9614402588306973713e-23"/>
+            <geometry>
+                <mesh filename="body.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="0.011695358968907026975 -1.042556296349287257e-05 0.11198479529296684332" rpy="0 0 0"/>
+            <mass value="152.97898221658957141"/>
+            <inertia ixx="6.0116061982226183247" ixy="-3.895552330722517855e-05" ixz="0.02324502612291988804"
+                     iyy="2.0627635445228711397" iyz="4.8274829229118082204e-05" izz="6.7131155473412897905"/>
+        </inertial>
+    </link>
+
+    <link name="small_drawer">
+        <visual>
+            <origin xyz="-0.088333500000000009234 -0.015000000000000013323 0"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="small_drawer.obj"/>
+            </geometry>
+            <material name="small_drawer_material">
+                <color rgba="0.15 0.15 0.15 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.088333500000000009234 -0.015000000000000013323 0"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="small_drawer.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="-1.3877787807814456755e-17 0.0078125036482844835428 -0.13750000000000003886" rpy="0 0 0"/>
+            <mass value="2.7736709187500001583"/>
+            <inertia ixx="0.021563577637505028373" ixy="7.9291006398029180373e-36" ixz="2.976016855130949113e-41"
+                     iyy="0.031074459083094477935" iyz="3.0415546004333060722e-56" izz="0.0098772730803130918964"/>
+        </inertial>
+    </link>
+
+    <link name="small_drawer_pull">
+        <visual>
+            <origin xyz="-0.088333500000000009234 0 0.2750000000000000222"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="small_drawer_pull.obj"/>
+            </geometry>
+            <material name="small_drawer_pull_material">
+                <color rgba="0.96078431372549022438 0.96078431372549022438 0.96470588235294119084 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.088333500000000009234 0 0.2750000000000000222"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="small_drawer_pull.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="-1.3877787807814456755e-17 0.0050000000000000001041 -0.0049999999999999489297" rpy="0 0 0"/>
+            <mass value="0.13868359499999935447"/>
+            <inertia ixx="2.3113932499999782785e-06" ixy="4.6464356819945125008e-38" ixz="-8.4630736185947180373e-45"
+                     iyy="0.00036186281551619619819" iyz="-1.3292740481622866028e-43" izz="0.00036186281551619619819"/>
+        </inertial>
+    </link>
+
+    <joint name="sd1-pull-fasten" type="fixed">
+        <origin xyz="0 -0.015000000000000013323 -0.2750000000000000222"
+                rpy="3.3087224502121103321e-24 -6.6396541575491237833e-24 -1.4021432684267953003e-17"/>
+        <parent link="small_drawer"/>
+        <child link="small_drawer_pull"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20"/>
+        <joint_properties friction="0.0"/>
+    </joint>
+
+    <joint name="sd1-slider" type="prismatic">
+        <origin xyz="0.12499999999999961142 0.19166658325000007768 0.17500000000000068279"
+                rpy="-1.570796326794896558 -2.6469779601696862086e-23 -1.570796326794896558"/>
+        <parent link="body"/>
+        <child link="small_drawer"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20" lower="-0.25400000000000000355" upper="0"/>
+        <joint_properties friction="0.15"/>
+    </joint>
+
+    <link name="small_drawer_2">
+        <visual>
+            <origin xyz="-0.088333499999999995356 -0.015000000000000013323 0"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="small_drawer.obj"/>
+            </geometry>
+            <material name="small_drawer_material">
+                <color rgba="0.15 0.15 0.15 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.088333499999999995356 -0.015000000000000013323 0"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="small_drawer.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="5.8209632984233319929e-36 0.0078125036482844835428 -0.13750000000000003886" rpy="0 0 0"/>
+            <mass value="2.7736709187500001583"/>
+            <inertia ixx="0.021563577637505028373" ixy="1.343212184829243645e-35" ixz="2.2281802969224302911e-41"
+                     iyy="0.031074459083094477935" iyz="-1.7122430206423392564e-41" izz="0.0098772730803130918964"/>
+        </inertial>
+    </link>
+
+    <link name="small_drawer_pull_2">
+        <visual>
+            <origin xyz="-0.088333499999999995356 0 0.2750000000000000222"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="small_drawer_pull.obj"/>
+            </geometry>
+            <material name="small_drawer_pull_material">
+                <color rgba="0.96078431372549022438 0.96078431372549022438 0.96470588235294119084 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.088333499999999995356 0 0.2750000000000000222"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="small_drawer_pull.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="-2.2448414180303325299e-41 0.0050000000000000001041 -0.0049999999999999489297" rpy="0 0 0"/>
+            <mass value="0.13868359499999935447"/>
+            <inertia ixx="2.3113932499999782785e-06" ixy="5.8988073473444184969e-40" ixz="3.220407850332774176e-44"
+                     iyy="0.00036186281551619619819" iyz="6.6463702408114678627e-44" izz="0.00036186281551619619819"/>
+        </inertial>
+    </link>
+
+
+    <joint name="sd2-pull-fasten" type="fixed">
+        <origin xyz="-4.2351647362715016953e-19 -0.015000000000000013323 -0.2750000000000000222"
+                rpy="9.9261673506363291597e-24 -1.1028361767309280012e-39 -6.6174449001690156979e-24"/>
+        <parent link="small_drawer_2"/>
+        <child link="small_drawer_pull_2"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20"/>
+        <joint_properties friction="0.0"/>
+    </joint>
+
+    <joint name="sd2-slider" type="prismatic">
+        <origin xyz="0.12500000000000008327 2.1310619808589947866e-05 0.17500121436938326225"
+                rpy="-1.570796326794896558 -2.8042905073205308552e-17 -1.570796326794896558"/>
+        <parent link="body"/>
+        <child link="small_drawer_2"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20" lower="-0.25400000000000000355" upper="0"/>
+        <joint_properties friction="0.15"/>
+    </joint>
+
+    <link name="small_drawer_3">
+        <visual>
+            <origin xyz="-0.088333500000000009234 -0.014999999999999985567 0"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="small_drawer.obj"/>
+            </geometry>
+            <material name="small_drawer_material">
+                <color rgba="0.15 0.15 0.15 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.088333500000000009234 -0.014999999999999985567 0"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="small_drawer.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="-1.3877787807814456755e-17 0.0078125036482845112984 -0.13750000000000003886" rpy="0 0 0"/>
+            <mass value="2.7736709187500001583"/>
+            <inertia ixx="0.021563577637505028373" ixy="2.3506435028317320974e-35" ixz="-3.9668210070622429099e-41"
+                     iyy="0.031074459083094477935" iyz="2.0791396393991286324e-42" izz="0.0098772730803130918964"/>
+        </inertial>
+    </link>
+
+    <link name="small_drawer_pull_3">
+        <visual>
+            <origin xyz="-0.088333499999999995356 -2.7755575615628913511e-17 0.2750000000000000222"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="small_drawer_pull.obj"/>
+            </geometry>
+            <material name="small_drawer_pull_material">
+                <color rgba="0.96078431372549022438 0.96078431372549022438 0.96470588235294119084 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.088333499999999995356 -2.7755575615628913511e-17 0.2750000000000000222"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="small_drawer_pull.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="9.2040641101955415234e-33 0.0049999999999999723485 -0.0049999999999999489297" rpy="0 0 0"/>
+            <mass value="0.13868359499999935447"/>
+            <inertia ixx="2.3113932499999782785e-06" ixy="4.6460301260471739306e-38" ixz="-1.1818232144124254021e-35"
+                     iyy="0.00036186281551619619819" iyz="2.0603747786131114389e-42" izz="0.00036186281551619619819"/>
+        </inertial>
+    </link>
+
+    <joint name="sd3-pull-fasten" type="fixed">
+        <origin xyz="0 -0.014999999999999985567 -0.2750000000000000222"
+                rpy="6.9388944622541455487e-17 -8.5226624765247392253e-16 1.4021453156988095202e-17"/>
+        <parent link="small_drawer_3"/>
+        <child link="small_drawer_pull_3"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20"/>
+        <joint_properties friction="0.0"/>
+    </joint>
+
+    <joint name="sd3-slider" type="prismatic">
+        <origin xyz="0.12500000000000002776 -0.19162204263971166496 0.17500011833207107514"
+                rpy="-1.570796326794896558 -2.8042911690650190487e-17 -1.570796326794896558"/>
+        <parent link="body"/>
+        <child link="small_drawer_3"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20" lower="-0.25400000000000000355" upper="0"/>
+        <joint_properties friction="0.15"/>
+    </joint>
+
+
+
+    <link name="large_drawer">
+        <visual>
+            <origin xyz="-0.28000000000000002665 -0.015000000000000013323 0"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="large_drawer.obj"/>
+            </geometry>
+            <material name="large_drawer_material">
+                <color rgba="0.15 0.15 0.15 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.28000000000000002665 -0.015000000000000013323 0"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="large_drawer.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="6.2084261560793879319e-36 0.0093309859154929418457 -0.13750000000000003886" rpy="0 0 0"/>
+            <mass value="7.6635625000000020535"/>
+            <inertia ixx="0.061552201844923715157" ixy="7.346202175018192188e-35" ixz="5.4754089615728361746e-41"
+                     iyy="0.28790056940104180594" iyz="2.8179583077779060858e-55" izz="0.22711685848554882816"/>
+        </inertial>
+    </link>
+
+    <link name="large_drawer_pull">
+        <visual>
+            <origin xyz="-0.28000000000000002665 0 0.2750000000000000222"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="large_drawer_pull.obj"/>
+            </geometry>
+            <material name="large_drawer_pull_material">
+                <color rgba="0.96078431372549022438 0.96078431372549022438 0.96470588235294119084 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.28000000000000002665 0 0.2750000000000000222"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="large_drawer_pull.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="-6.7403990638322382979e-18 0.0050000000000000001041 -0.0050000000000000044409" rpy="0 0 0"/>
+            <mass value="0.43959999999999804787"/>
+            <inertia ixx="7.3266666666665993419e-06" ixy="1.4670947874766101162e-36" ixz="2.7646589310190778233e-19"
+                     iyy="0.011491876666666614101" iyz="5.9979442115912754608e-56" izz="0.011491876666666614101"/>
+        </inertial>
+    </link>
+
+    <joint name="ld3-pull-fasten" type="fixed">
+        <origin xyz="-4.2012834183813296818e-19 -0.015000000000000013323 -0.2750000000000000222"
+                rpy="3.929107909626880721e-24 -7.0614367134521505686e-24 -1.4021439301712853427e-17"/>
+        <parent link="large_drawer"/>
+        <child link="large_drawer_pull"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20"/>
+        <joint_properties friction="0.0"/>
+    </joint>
+
+    <joint name="ld3-slider" type="prismatic">
+        <origin xyz="0.125 1.5739445722529055161e-05 0.12500102668739296319"
+                rpy="-1.570796326794896558 -2.6469779601696862086e-23 -1.570796326794896558"/>
+        <parent link="body"/>
+        <child link="large_drawer"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20" lower="-0.25400000000000000355" upper="0"/>
+        <joint_properties friction="0.15"/>
+    </joint>
+
+    <link name="large_drawer_2">
+        <visual>
+            <origin xyz="-0.28000000000000002665 -0.014999999999999999445 0"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="large_drawer.obj"/>
+            </geometry>
+            <material name="large_drawer_material">
+                <color rgba="0.15 0.15 0.15 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.28000000000000002665 -0.014999999999999999445 0"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="large_drawer.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="6.2084261560793879319e-36 0.0093309859154929557234 -0.13750000000000003886" rpy="0 0 0"/>
+            <mass value="7.6635625000000020535"/>
+            <inertia ixx="0.061552201844923715157" ixy="7.346202175018192188e-35" ixz="5.4754089615728361746e-41"
+                     iyy="0.28790056940104180594" iyz="2.8179583077779060858e-55" izz="0.22711685848554882816"/>
+        </inertial>
+    </link>
+
+    <link name="large_drawer_pull_2">
+        <visual>
+            <origin xyz="-0.28000000000000002665 -1.3877787807814456755e-17 0.2750000000000000222"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="large_drawer_pull.obj"/>
+            </geometry>
+            <material name="large_drawer_pull_material">
+                <color rgba="0.96078431372549022438 0.96078431372549022438 0.96470588235294119084 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.28000000000000002665 -1.3877787807814456755e-17 0.2750000000000000222"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="large_drawer_pull.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="-6.7403990638322382979e-18 0.0049999999999999862263 -0.0050000000000000044409" rpy="0 0 0"/>
+            <mass value="0.43959999999999804787"/>
+            <inertia ixx="7.3266666666665993419e-06" ixy="1.4670947874766101162e-36" ixz="2.7646589310190778233e-19"
+                     iyy="0.011491876666666614101" iyz="5.9979442115912754608e-56" izz="0.011491876666666614101"/>
+        </inertial>
+    </link>
+
+    <joint name="ld2-pull-fasten" type="fixed">
+        <origin xyz="-4.2097537478538726852e-19 -0.014999999999999999445 -0.2750000000000000222"
+                rpy="3.929107909626880721e-24 -7.0614367134521505686e-24 -1.4021439301712853427e-17"/>
+        <parent link="large_drawer_2"/>
+        <child link="large_drawer_pull_2"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20"/>
+        <joint_properties friction="0.0"/>
+    </joint>
+
+    <joint name="ld2-slider" type="prismatic">
+        <origin xyz="0.12499999999999997224 5.9832797558168060448e-06 0.075000966890758885564"
+                rpy="-1.570796326794896558 -2.6469779601696862086e-23 -1.570796326794896558"/>
+        <parent link="body"/>
+        <child link="large_drawer_2"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20" lower="-0.25400000000000000355" upper="0"/>
+        <joint_properties friction="0.15"/>
+    </joint>
+
+    <link name="large_drawer_3">
+        <visual>
+            <origin xyz="-0.28000000000000002665 -0.014999999999999999445 0"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="large_drawer.obj"/>
+            </geometry>
+            <material name="large_drawer_material">
+                <color rgba="0.15 0.15 0.15 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.28000000000000002665 -0.014999999999999999445 0"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="large_drawer.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="6.2084261560793879319e-36 0.0093309859154929557234 -0.13750000000000003886" rpy="0 0 0"/>
+            <mass value="7.6635625000000020535"/>
+            <inertia ixx="0.061552201844923715157" ixy="7.346202175018192188e-35" ixz="5.4754089615728361746e-41"
+                     iyy="0.28790056940104180594" iyz="2.8179583077779060858e-55" izz="0.22711685848554882816"/>
+        </inertial>
+    </link>
+
+    <link name="large_drawer_pull_3">
+        <visual>
+            <origin xyz="-0.28000000000000002665 6.9388939039072283776e-18 0.2750000000000000222"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="large_drawer_pull.obj"/>
+            </geometry>
+            <material name="large_drawer_pull_material">
+                <color rgba="0.96078431372549022438 0.96078431372549022438 0.96470588235294119084 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.28000000000000002665 6.9388939039072283776e-18 0.2750000000000000222"
+                    rpy="1.570796326794896558 1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="large_drawer_pull.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="-6.7403990638322382979e-18 0.005000000000000007043 -0.0050000000000000044409" rpy="0 0 0"/>
+            <mass value="0.43959999999999804787"/>
+            <inertia ixx="7.3266666666665993419e-06" ixy="1.4670947874766101162e-36" ixz="2.7646589310190778233e-19"
+                     iyy="0.011491876666666614101" iyz="5.9979442115912754608e-56" izz="0.011491876666666614101"/>
+        </inertial>
+    </link>
+
+    <joint name="ld1-pull-fasten" type="fixed">
+        <origin xyz="-4.2063208656732668243e-19 -0.014999999999999999445 -0.2750000000000000222"
+                rpy="3.929107909626880721e-24 -7.0614367134521505686e-24 -1.4021439301712853427e-17"/>
+        <parent link="large_drawer_3"/>
+        <child link="large_drawer_pull_3"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20"/>
+        <joint_properties friction="0.0"/>
+    </joint>
+
+    <joint name="ld1-slider" type="prismatic">
+        <origin xyz="0.12500000000000011102 0 0.025000000000000077716"
+                rpy="-1.570796326794896558 -2.6469779601696862086e-23 -1.570796326794896558"/>
+        <parent link="body"/>
+        <child link="large_drawer_3"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20" lower="-0.25400000000000000355" upper="0"/>
+        <joint_properties friction="0.15"/>
+    </joint>
+
+
+
+    <link name="lid_joiner_l">
+        <visual>
+            <origin xyz="-0.28000000000000002665 0.22500000000000000555 0.020000000000000017764"
+                    rpy="1.570796326794896558 -9.9047818018953405703e-20 3.6150882852452903921e-40"/>
+            <geometry>
+                <mesh filename="lid_joiner_l.obj"/>
+            </geometry>
+            <material name="lid_joiner_l_material">
+                <color rgba="0.15 0.15 0.15 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.28000000000000002665 0.22500000000000000555 0.020000000000000017764"
+                    rpy="1.570796326794896558 -9.9047818018953405703e-20 3.6150882852452903921e-40"/>
+            <geometry>
+                <mesh filename="lid_joiner_l.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="-0.012500000000000011102 0 -0.0049999999999999862263" rpy="0 0 0"/>
+            <mass value="0.098125000000000045519"/>
+            <inertia ixx="2.1260416666666667317e-05" ixy="5.2091184683949314178e-39" ixz="-4.2520918751106361827e-25"
+                     iyy="5.9283854166666770776e-06" iyz="-2.4793530576267619014e-22" izz="2.5553385416666678069e-05"/>
+        </inertial>
+    </link>
+
+    <link name="lid_hinge_l">
+        <visual>
+            <origin xyz="-0.26750000000000001554 -0.029999999999999971134 0.25"
+                    rpy="3.141592653589793116 3.7524433858002099508e-40 1.7522112846523654271e-34"/>
+            <geometry>
+                <mesh filename="lid_hinge_l.obj"/>
+            </geometry>
+            <material name="lid_hinge_l_material">
+                <color rgba="0.15 0.15 0.15 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.26750000000000001554 -0.029999999999999971134 0.25"
+                    rpy="3.141592653589793116 3.7524433858002099508e-40 1.7522112846523654271e-34"/>
+            <geometry>
+                <mesh filename="lid_hinge_l.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="5.5511151231257827021e-17 -0.0074999999999999719669 -0.013773002877300377644" rpy="0 0 0"/>
+            <mass value="0.078722906673633116781"/>
+            <inertia ixx="6.8151732829467751533e-06" ixy="-4.5415317209311230902e-40" ixz="-5.3361052108380255145e-41"
+                     iyy="9.1965354493068090017e-06" iyz="-2.2582159702136936409e-38" izz="5.3334711666212771344e-06"/>
+        </inertial>
+    </link>
+
+    <link name="lid">
+        <visual>
+            <origin xyz="-0.26750000000000001554 -0.018000000000000015987 -0.015000000000000013323"
+                    rpy="-1.570796326794896558 -6.2780683123642719144e-18 0"/>
+            <geometry>
+                <mesh filename="lid.obj"/>
+            </geometry>
+            <material name="lid_material">
+                <color rgba="0.15 0.15 0.15 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.26750000000000001554 -0.018000000000000015987 -0.015000000000000013323"
+                    rpy="-1.570796326794896558 -6.2780683123642719144e-18 0"/>
+            <geometry>
+                <mesh filename="lid.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="-0.11590000346555999478 0.011034665928606079977 0.28500000000000041966" rpy="0 0 0"/>
+            <mass value="41.761696962515770792"/>
+            <inertia ixx="1.3283067546464044639" ixy="0.0013072190997971628104" ixz="-2.2573686794444226961e-15"
+                     iyy="1.6723864333297420171" iyz="2.2931262883109760565e-16" izz="0.35355824350164488656"/>
+        </inertial>
+    </link>
+
+    <link name="lock">
+        <visual>
+            <origin xyz="0.2999999999999999889 -0.022499999999999964473 0"
+                    rpy="-1.570796326794896558 -1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="lock.obj"/>
+            </geometry>
+            <material name="lock_material">
+                <color rgba="0.96078431372549022438 0.96078431372549022438 0.96470588235294119084 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0.2999999999999999889 -0.022499999999999964473 0"
+                    rpy="-1.570796326794896558 -1.570796326794896558 0"/>
+            <geometry>
+                <mesh filename="lock.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="4.327016640579011761e-34 3.4694469519536141888e-17 -0.002500000000000000052" rpy="0 0 0"/>
+            <mass value="0.0069360475305037180838"/>
+            <inertia ixx="1.1198826741959133526e-07" ixy="2.1614412071847175756e-39" ixz="-3.9388239264816041468e-40"
+                     iyy="1.1198826741959134849e-07" iyz="-9.292396399551258394e-39" izz="1.9507633679541716208e-07"/>
+        </inertial>
+    </link>
+
+    <joint name="lock-fasten" type="fixed">
+        <origin xyz="-0.26750000000000001554 0.0045000000000000039968 0.28499999999999997558"
+                rpy="5.898059818321287102e-16 1.570796326794896558 0"/>
+        <parent link="lid"/>
+        <child link="lock"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20"/>
+        <joint_properties friction="0.0"/>
+    </joint>
+
+    <joint name="hinge-rev-1" type="revolute">
+        <origin xyz="-8.3266726846886740532e-17 -0.014999999999999846789 -0.017999999999999793943"
+                rpy="-1.570796326794896558 2.775556734890707047e-17 -2.3661771082660086051e-17"/>
+        <parent link="lid_hinge_l"/>
+        <child link="lid"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0"/>
+        <joint_properties friction="0.8"/>
+    </joint>
+
+    <joint name="lid-l-joiner-fasten" type="fixed">
+        <origin xyz="-0.012500000000000011102 -0.024999999999999994449 -0.0099999999999999533706"
+                rpy="-1.570796326794896558 -9.9048350145610456982e-20 -1.6989160639143194618e-28"/>
+        <parent link="lid_joiner_l"/>
+        <child link="lid_hinge_l"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20"/>
+        <joint_properties friction="0.0"/>
+    </joint>
+
+    <joint name="l hinge body fasten" type="fixed">
+        <origin xyz="0.1300000000000000322 0.28000000000000119238 0.22500000000000086597"
+                rpy="-1.570796326794896558 -8.2665520855937146157e-24 -3.0637249773393151467e-18"/>
+        <parent link="body"/>
+        <child link="lid_joiner_l"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20"/>
+        <joint_properties friction="0.0"/>
+    </joint>
+
+    <link name="hinge_joiner_r">
+        <visual>
+            <origin xyz="-0.28000000000000002665 -0.22500000000000006106 -0.57999999999999996003"
+                    rpy="-1.57079632679489678 3.8034361914197046169e-17 -3.6734194692018627405e-40"/>
+            <geometry>
+                <mesh filename="hinge_joiner_r.obj"/>
+            </geometry>
+            <material name="hinge_joiner_r_material">
+                <color rgba="0.15 0.15 0.15 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.28000000000000002665 -0.22500000000000006106 -0.57999999999999996003"
+                    rpy="-1.57079632679489678 3.8034361914197046169e-17 -3.6734194692018627405e-40"/>
+            <geometry>
+                <mesh filename="hinge_joiner_r.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="-0.012500000000000011102 0 -0.0050000000000000339312" rpy="0 0 0"/>
+            <mass value="0.098125000000000142664"/>
+            <inertia ixx="2.1260416666666694422e-05" ixy="1.1764749318391254727e-37" ixz="1.632803271238384725e-22"
+                     iyy="5.9283854166666855479e-06" iyz="1.7423532079671240379e-21" izz="2.5553385416666705174e-05"/>
+        </inertial>
+    </link>
+
+    <link name="hinge_r">
+        <visual>
+            <origin xyz="-0.26749999999999996003 -0.57000000000000006217 0.25"
+                    rpy="3.141592653589793116 2.6596062820656147246e-40 -9.14227980394379499e-34"/>
+            <geometry>
+                <mesh filename="hinge_r.obj"/>
+            </geometry>
+            <material name="hinge_r_material">
+                <color rgba="0.15 0.15 0.15 1.0"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.26749999999999996003 -0.57000000000000006217 0.25"
+                    rpy="3.141592653589793116 2.6596062820656147246e-40 -9.14227980394379499e-34"/>
+            <geometry>
+                <mesh filename="hinge_r.obj"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:hunt_crossley_dissipation value="0"/>
+                <drake:mu_static value="0.5"/>
+                <drake:mu_dynamic value="0.42"/>
+            </drake:proximity_properties>
+        </collision>
+        <inertial>
+            <origin xyz="5.5511151231257827021e-17 0.0074999999999999520175 -0.013773002877300322133" rpy="0 0 0"/>
+            <mass value="0.07872290667363318617"/>
+            <inertia ixx="6.8151732829467844707e-06" ixy="2.1373504244242013788e-38" ixz="-5.3359175876315933107e-41"
+                     iyy="9.1965354493068191661e-06" iyz="-1.697549444580798486e-38" izz="5.3334711666212839107e-06"/>
+        </inertial>
+    </link>
+
+    <joint name="hinge-joiner-r-fasten" type="fixed">
+        <origin xyz="-0.012500000000000011102 0.025000000000000077716 -0.0099999999999999533706"
+                rpy="1.570796326794896558 3.8034362446323687476e-17 6.5225896684855843434e-26"/>
+        <parent link="hinge_joiner_r"/>
+        <child link="hinge_r"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20"/>
+        <joint_properties friction="0.0"/>
+    </joint>
+
+    <joint name="r hinge body fasten" type="fixed">
+        <origin xyz="0.1300000000000000322 -0.28000000000000113687 0.22500000000000089373"
+                rpy="1.570796326794896558 -8.2718060926291185097e-24 -2.0609506163222272474e-23"/>
+        <parent link="body"/>
+        <child link="hinge_joiner_r"/>
+        <axis xyz="0 0 1"/>
+        <limit effort="1" velocity="20"/>
+        <joint_properties friction="0.0"/>
+    </joint>
+
+    <drake:collision_filter_group name="toolbox_parts">
+        <drake:member link="body"/>
+        <drake:member link="lid"/>
+        <drake:member link="small_drawer"/>
+        <drake:member link="small_drawer_pull"/>
+        <drake:member link="small_drawer_2"/>
+        <drake:member link="small_drawer_pull_2"/>
+        <drake:member link="small_drawer_3"/>
+        <drake:member link="small_drawer_pull_3"/>
+        <drake:member link="large_drawer"/>
+        <drake:member link="large_drawer_pull"/>
+        <drake:member link="large_drawer_2"/>
+        <drake:member link="large_drawer_pull_2"/>
+        <drake:member link="large_drawer_3"/>
+        <drake:member link="large_drawer_pull_3"/>
+        <drake:member link="lid_joiner_l"/>
+        <drake:member link="lid_hinge_l"/>
+        <drake:member link="lock"/>
+        <drake:member link="hinge_r"/>
+        <drake:member link="hinge_joiner_r"/>
+        <drake:ignored_collision_filter_group name="toolbox_parts"/>
+    </drake:collision_filter_group>
+
+</robot>
