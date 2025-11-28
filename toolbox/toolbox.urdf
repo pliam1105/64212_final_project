@@ -106,7 +106,7 @@
         <joint_properties friction="0.0"/>
     </joint>
 
-    <joint name="sd1-slider" type="prismatic">
+    <joint name="sd1-slider" type="fixed">
         <origin xyz="0.12499999999999961142 0.19166658325000007768 0.17500000000000068279"
                 rpy="-1.570796326794896558 -2.6469779601696862086e-23 -1.570796326794896558"/>
         <parent link="body"/>
@@ -191,7 +191,7 @@
         <joint_properties friction="0.0"/>
     </joint>
 
-    <joint name="sd2-slider" type="prismatic">
+    <joint name="sd2-slider" type="fixed">
         <origin xyz="0.12500000000000008327 2.1310619808589947866e-05 0.17500121436938326225"
                 rpy="-1.570796326794896558 -2.8042905073205308552e-17 -1.570796326794896558"/>
         <parent link="body"/>
@@ -275,7 +275,7 @@
         <joint_properties friction="0.0"/>
     </joint>
 
-    <joint name="sd3-slider" type="prismatic">
+    <joint name="sd3-slider" type="fixed">
         <origin xyz="0.12500000000000002776 -0.19162204263971166496 0.17500011833207107514"
                 rpy="-1.570796326794896558 -2.8042911690650190487e-17 -1.570796326794896558"/>
         <parent link="body"/>
@@ -361,7 +361,7 @@
         <joint_properties friction="0.0"/>
     </joint>
 
-    <joint name="ld3-slider" type="prismatic">
+    <joint name="ld3-slider" type="fixed">
         <origin xyz="0.125 1.5739445722529055161e-05 0.12500102668739296319"
                 rpy="-1.570796326794896558 -2.6469779601696862086e-23 -1.570796326794896558"/>
         <parent link="body"/>
@@ -445,7 +445,7 @@
         <joint_properties friction="0.0"/>
     </joint>
 
-    <joint name="ld2-slider" type="prismatic">
+    <joint name="ld2-slider" type="fixed">
         <origin xyz="0.12499999999999997224 5.9832797558168060448e-06 0.075000966890758885564"
                 rpy="-1.570796326794896558 -2.6469779601696862086e-23 -1.570796326794896558"/>
         <parent link="body"/>
@@ -529,8 +529,8 @@
         <joint_properties friction="0.0"/>
     </joint>
 
-    <joint name="ld1-slider" type="prismatic">
-        <origin xyz="0.12500000000000011102 0 0.025000000000000077716"
+    <joint name="ld1-slider" type="fixed"> # change to "prismatic"
+        <origin xyz="-0.15 0 0.025000000000000077716"
                 rpy="-1.570796326794896558 -2.6469779601696862086e-23 -1.570796326794896558"/>
         <parent link="body"/>
         <child link="large_drawer_3"/>

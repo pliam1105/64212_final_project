@@ -3,5 +3,5 @@ directives:
 - add_model:
     name: cabinet
     file: file:////home/pliam/Desktop/PROJECTS/64212_final_project/toolbox/toolbox.urdf
-    default_joint_positions:
-        ld1-slider: [-0.20]
+    # default_joint_positions:
+    #     ld1-slider: [-0.20]
