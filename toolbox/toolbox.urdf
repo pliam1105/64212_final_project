@@ -1,6 +1,6 @@
 <!-- Sid: The toolbox color was previously (0.76862745098039220171 0.20784313725490197178 0.15294117647058824705) -->
 <robot name="toolbox" xmlns:drake="http://drake.mit.edu">
-    <link name="body">
+    <link name="body_">
         <visual>
             <origin xyz="-0.14999999999999999445 0.2999999999999999889 0"
                     rpy="-2.8042865368535819725e-17 -1.654361225106057113e-23 -3.9614402588306973713e-23"/>
@@ -109,7 +109,7 @@
     <joint name="sd1-slider" type="fixed">
         <origin xyz="0.12499999999999961142 0.19166658325000007768 0.17500000000000068279"
                 rpy="-1.570796326794896558 -2.6469779601696862086e-23 -1.570796326794896558"/>
-        <parent link="body"/>
+        <parent link="body_"/>
         <child link="small_drawer"/>
         <axis xyz="0 0 1"/>
         <limit effort="1" velocity="20" lower="-0.25400000000000000355" upper="0"/>
@@ -194,7 +194,7 @@
     <joint name="sd2-slider" type="fixed">
         <origin xyz="0.12500000000000008327 2.1310619808589947866e-05 0.17500121436938326225"
                 rpy="-1.570796326794896558 -2.8042905073205308552e-17 -1.570796326794896558"/>
-        <parent link="body"/>
+        <parent link="body_"/>
         <child link="small_drawer_2"/>
         <axis xyz="0 0 1"/>
         <limit effort="1" velocity="20" lower="-0.25400000000000000355" upper="0"/>
@@ -278,7 +278,7 @@
     <joint name="sd3-slider" type="fixed">
         <origin xyz="0.12500000000000002776 -0.19162204263971166496 0.17500011833207107514"
                 rpy="-1.570796326794896558 -2.8042911690650190487e-17 -1.570796326794896558"/>
-        <parent link="body"/>
+        <parent link="body_"/>
         <child link="small_drawer_3"/>
         <axis xyz="0 0 1"/>
         <limit effort="1" velocity="20" lower="-0.25400000000000000355" upper="0"/>
@@ -364,7 +364,7 @@
     <joint name="ld3-slider" type="fixed">
         <origin xyz="0.125 1.5739445722529055161e-05 0.12500102668739296319"
                 rpy="-1.570796326794896558 -2.6469779601696862086e-23 -1.570796326794896558"/>
-        <parent link="body"/>
+        <parent link="body_"/>
         <child link="large_drawer"/>
         <axis xyz="0 0 1"/>
         <limit effort="1" velocity="20" lower="-0.25400000000000000355" upper="0"/>
@@ -448,7 +448,7 @@
     <joint name="ld2-slider" type="fixed">
         <origin xyz="0.12499999999999997224 5.9832797558168060448e-06 0.075000966890758885564"
                 rpy="-1.570796326794896558 -2.6469779601696862086e-23 -1.570796326794896558"/>
-        <parent link="body"/>
+        <parent link="body_"/>
         <child link="large_drawer_2"/>
         <axis xyz="0 0 1"/>
         <limit effort="1" velocity="20" lower="-0.25400000000000000355" upper="0"/>
@@ -532,7 +532,7 @@
     <joint name="ld1-slider" type="fixed"> # change to "prismatic"
         <origin xyz="-0.15 0 0.025000000000000077716"
                 rpy="-1.570796326794896558 -2.6469779601696862086e-23 -1.570796326794896558"/>
-        <parent link="body"/>
+        <parent link="body_"/>
         <child link="large_drawer_3"/>
         <axis xyz="0 0 1"/>
         <limit effort="1" velocity="20" lower="-0.25400000000000000355" upper="0"/>
@@ -702,7 +702,7 @@
     <joint name="l hinge body fasten" type="fixed">
         <origin xyz="0.1300000000000000322 0.28000000000000119238 0.22500000000000086597"
                 rpy="-1.570796326794896558 -8.2665520855937146157e-24 -3.0637249773393151467e-18"/>
-        <parent link="body"/>
+        <parent link="body_"/>
         <child link="lid_joiner_l"/>
         <axis xyz="0 0 1"/>
         <limit effort="1" velocity="20"/>
@@ -786,7 +786,7 @@
     <joint name="r hinge body fasten" type="fixed">
         <origin xyz="0.1300000000000000322 -0.28000000000000113687 0.22500000000000089373"
                 rpy="1.570796326794896558 -8.2718060926291185097e-24 -2.0609506163222272474e-23"/>
-        <parent link="body"/>
+        <parent link="body_"/>
         <child link="hinge_joiner_r"/>
         <axis xyz="0 0 1"/>
         <limit effort="1" velocity="20"/>
@@ -794,7 +794,7 @@
     </joint>
 
     <drake:collision_filter_group name="toolbox_parts">
-        <drake:member link="body"/>
+        <drake:member link="body_"/>
         <drake:member link="lid"/>
         <drake:member link="small_drawer"/>
         <drake:member link="small_drawer_pull"/>
