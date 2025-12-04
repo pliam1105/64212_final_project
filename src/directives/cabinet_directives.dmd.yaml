@@ -1,0 +1,4 @@
+directives:
+- add_model:
+    name: cabinet
+    file: file:////Users/yiboc/64212_final_project/src/toolbox/toolbox.urdf

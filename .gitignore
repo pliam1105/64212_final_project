@@ -3,3 +3,4 @@ venv
 .vscode
 FastSAM-x.pt
 FastSAM
+__pycache__

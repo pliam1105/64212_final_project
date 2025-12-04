@@ -1,10 +1,10 @@
 directives:
     - add_directives:
-        file: file:///Users/yiboc/64212_final_project/directives/bimanual_IIWA14_with_table_and_initials_and_assets.dmd.yaml
+        file: file:///Users/yiboc/64212_final_project/src/directives/bimanual_IIWA14_with_table_and_initials_and_assets.dmd.yaml
     - add_directives:
-        file: file:///Users/yiboc/64212_final_project/directives/camera_directives.dmd.yaml
+        file: file:///Users/yiboc/64212_final_project/src/directives/camera_directives.dmd.yaml
     - add_directives:
-        file: file:///Users/yiboc/64212_final_project/directives/cabinet_directives.dmd.yaml
+        file: file:///Users/yiboc/64212_final_project/src/directives/cabinet_directives.dmd.yaml
 
 
 cameras:
