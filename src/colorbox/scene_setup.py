@@ -14,7 +14,7 @@ from pydrake.math import RigidTransform
 from pydrake.multibody.parsing import Parser as MBParser
 from pydrake.multibody.plant import CoulombFriction
 from pydrake.multibody.tree import SpatialInertia, UnitInertia
-from pydrake.systems.primitives import ConstantVectorSource
+from pydrake.systems.primitives import ConstantVectorSource, Integrator, TrajectorySource
 
 from manipulation.station import AddPointClouds, LoadScenario, MakeHardwareStation
 import os
@@ -248,14 +248,21 @@ class StationDiagram:
     meshcat: any
     builder: DiagramBuilder
     station_system: Diagram
-    iiwa_source: ConstantVectorSource
-    wsg_source: ConstantVectorSource
+    iiwa_source: ConstantVectorSource | None
+    wsg_source: ConstantVectorSource | TrajectorySource
+    velocity_source: ConstantVectorSource | TrajectorySource | None
+    integrator: Integrator | None
+    controller: any | None
+    home_q: np.ndarray
     scenario_path: Path
 
 
 def build_station_setup(
     meshcat=None,
     n_free_boxes: int = 3,
+    use_velocity_control: bool = False,
+    traj_V_G=None,
+    traj_wsg_command=None,
 ) -> StationDiagram:
     """Create the DiagramBuilder that wraps the hardware station."""
 
@@ -287,12 +294,40 @@ def build_station_setup(
     q_const[5] = 3 * np.pi / 6.0
     q_const[6] = np.pi / 2.0
 
-    iiwa_source = builder.AddSystem(ConstantVectorSource(q_const))
-    builder.Connect(iiwa_source.get_output_port(), iiwa_port)
+    iiwa_source = None
+    velocity_source = None
+    integrator = None
+    controller = None
+    if use_velocity_control:
+        from .controllers import PseudoInverseController
+
+        velocity_source = (
+            builder.AddSystem(TrajectorySource(traj_V_G))
+            if traj_V_G is not None
+            else builder.AddSystem(ConstantVectorSource(np.zeros(6)))
+        )
+        controller = builder.AddSystem(
+            PseudoInverseController(station_system.GetSubsystemByName("plant"))
+        )
+        integrator = builder.AddSystem(Integrator(7))
+
+        builder.Connect(velocity_source.get_output_port(), controller.GetInputPort("V_WG"))
+        builder.Connect(
+            station_system.GetOutputPort("iiwa.position_measured"),
+            controller.GetInputPort("iiwa.position"),
+        )
+        builder.Connect(controller.get_output_port(), integrator.get_input_port())
+        builder.Connect(integrator.get_output_port(), iiwa_port)
+    else:
+        iiwa_source = builder.AddSystem(ConstantVectorSource(q_const))
+        builder.Connect(iiwa_source.get_output_port(), iiwa_port)
 
     wsg_port = station_system.GetInputPort("wsg.position")
-    wsg_opening = np.full(wsg_port.size(), 0.05)
-    wsg_source = builder.AddSystem(ConstantVectorSource(wsg_opening))
+    if traj_wsg_command is not None and use_velocity_control:
+        wsg_source = builder.AddSystem(TrajectorySource(traj_wsg_command))
+    else:
+        wsg_opening = np.full(wsg_port.size(), 0.05)
+        wsg_source = builder.AddSystem(ConstantVectorSource(wsg_opening))
     builder.Connect(wsg_source.get_output_port(), wsg_port)
 
     pc_ports = AddPointClouds(
@@ -310,6 +345,10 @@ def build_station_setup(
         station_system=station_system,
         iiwa_source=iiwa_source,
         wsg_source=wsg_source,
+        velocity_source=velocity_source,
+        integrator=integrator,
+        controller=controller,
+        home_q=q_const,
         scenario_path=scenario_path,
     )
 
@@ -323,8 +362,12 @@ class SimulationState:
     diagram: Diagram
     simulator: Simulator
     diagram_context: Context
-    iiwa_source: ConstantVectorSource
-    wsg_source: ConstantVectorSource
+    iiwa_source: ConstantVectorSource | None
+    wsg_source: ConstantVectorSource | TrajectorySource
+    velocity_source: ConstantVectorSource | TrajectorySource | None = None
+    integrator: Integrator | None = None
+    controller: any | None = None
+    home_q: np.ndarray | None = None
     time: float = 0.0
 
     @property
@@ -345,8 +388,38 @@ class SimulationState:
         self.time = target
 
     def set_arm_configuration(self, q: Sequence[float]) -> None:
-        src_context = self.iiwa_source.GetMyContextFromRoot(self.diagram_context)
-        self.iiwa_source.get_mutable_source_value(src_context).set_value(q)
+        """Set IIWA joint positions; works for position or velocity-control setups."""
+        q_arr = np.asarray(q)
+        if q_arr.shape[0] != 7:
+            # Extract the iiwa portion if a full generalized-position vector is passed.
+            q_arr = self.plant.GetPositionsFromArray(self.plant.GetModelInstanceByName("iiwa"), q_arr)
+
+        if self.iiwa_source is not None:
+            src_context = self.iiwa_source.GetMyContextFromRoot(self.diagram_context)
+            self.iiwa_source.get_mutable_source_value(src_context).set_value(q_arr)
+        elif self.integrator is not None:
+            integ_ctx = self.integrator.GetMyContextFromRoot(self.diagram_context)
+            self.integrator.set_integral_value(integ_ctx, q_arr)
+            # Keep plant context in sync for immediate queries (camera, perception).
+            plant_ctx = self.plant_context
+            iiwa_model = self.plant.GetModelInstanceByName("iiwa")
+            self.plant.SetPositions(plant_ctx, iiwa_model, q_arr)
+            self.diagram.ForcedPublish(self.diagram_context)
+        else:
+            raise RuntimeError("No mechanism available to set arm configuration.")
+
+    def set_gripper_opening(self, opening: float) -> None:
+        """Set the target opening of the Schunk WSG gripper fingers (meters)."""
+        src_context = self.wsg_source.GetMyContextFromRoot(self.diagram_context)
+        value = self.wsg_source.get_mutable_source_value(src_context).get_mutable_value()
+        value[:] = opening
+
+    def set_gripper_twist(self, V_WG: Sequence[float]) -> None:
+        """Command spatial velocity of the gripper frame when velocity control is enabled."""
+        if self.velocity_source is None:
+            raise RuntimeError("Velocity control not enabled for this SimulationState.")
+        src_context = self.velocity_source.GetMyContextFromRoot(self.diagram_context)
+        self.velocity_source.get_mutable_source_value(src_context).set_value(V_WG)
 
 
 def build_simulation(setup: StationDiagram) -> SimulationState:
@@ -357,6 +430,9 @@ def build_simulation(setup: StationDiagram) -> SimulationState:
     simulator = Simulator(diagram, diagram_context)
     simulator.Initialize()
     diagram.ForcedPublish(diagram_context)
+    if setup.integrator is not None and setup.home_q is not None:
+        integ_context = setup.integrator.GetMyContextFromRoot(diagram_context)
+        setup.integrator.set_integral_value(integ_context, setup.home_q)
     return SimulationState(
         meshcat=setup.meshcat,
         station=setup.station_system,
@@ -365,6 +441,10 @@ def build_simulation(setup: StationDiagram) -> SimulationState:
         diagram_context=diagram_context,
         iiwa_source=setup.iiwa_source,
         wsg_source=setup.wsg_source,
+        velocity_source=setup.velocity_source,
+        integrator=setup.integrator,
+        controller=setup.controller,
+        home_q=setup.home_q,
     )
 
 

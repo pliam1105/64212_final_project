@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from .camera_system import CameraSystem
+from .grasp_motion import execute_pick_and_place
 from .grasp_planning import find_best_antipodal_grasp
 from .perception import (
     bayesian_task_clouds,
@@ -19,11 +20,13 @@ from .scene_setup import (
     initialize_drawer_boxes,
 )
 
+from pydrake.math import RigidTransform, RotationMatrix
+
 device = "cpu"  # Change to "cpu" if no GPU is available.
 
 
 def main() -> None:
-    setup = build_station_setup()
+    setup = build_station_setup(use_velocity_control=True)
     sim_state = build_simulation(setup)
     initialize_drawer_boxes(sim_state)
 
@@ -58,6 +61,7 @@ def main() -> None:
         ]
     )
 
+    # Perception pipeline (uses teleporting joint targets even under velocity control).
     simple_clusters, _, concat_pcd = simple_sam_clip_pipeline(
         sim_state, camera, q_checkpoints, assets, dt=dt
     )
@@ -73,10 +77,13 @@ def main() -> None:
     )
 
     grasp_pose = find_best_antipodal_grasp(bayes_clusters, concat_pcd_mv, sim_state.meshcat)
-    if grasp_pose is not None:
-        print("Found feasible grasp pose:", grasp_pose)
-    else:
+    if grasp_pose is None:
         print("No grasp pose found. Check segmentation results and thresholds.")
+        return
+
+    print("Found feasible grasp pose:", grasp_pose)
+    execute_pick_and_place(sim_state, grasp_pose)
+    print("Pick and place execution completed.")
 
 
 if __name__ == "__main__":
