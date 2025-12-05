@@ -16,9 +16,12 @@ from ultralytics import FastSAM
 import clip
 from pydrake.all import BaseField, Concatenate, Fields, PointCloud
 
+import os
+import sys
+sys.path.append(os.path.abspath(__file__))
 
-from .camera_system import CameraSystem
-from .scene_setup import SimulationState
+from camera_system import CameraSystem
+from scene_setup import SimulationState
 
 
 @dataclass
@@ -370,8 +373,9 @@ YES_MEAN = 0.27
 YES_STD_DEV = 0.035
 NO_MEAN = 0.20
 NO_STD_DEV = 0.035
-PRIOR_YES = 0.5
 PRIOR = 0.5
+
+NUM_TASKS = len(np.genfromtxt(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "task_list.txt"), delimiter="\n", dtype=str))
 
 
 def fast_density(x, std, mean):
@@ -399,7 +403,7 @@ def bayesian_task_clouds(
     assets: PerceptionAssets,
     cluster_dist: float = 0.025,
     occlusion_threshold: float = 0.01,
-    prob_threshold: float = 0.34,
+    prob_threshold: float = 1.0/NUM_TASKS+0.1,
 ) -> tuple[list[PointCloud], PointCloud, np.ndarray]:
     concat_pcd = data.concat_pcd
     probs = torch.full((concat_pcd.size(), len(assets.tasks)), PRIOR, device=assets.device)
@@ -446,6 +450,7 @@ def bayesian_task_clouds(
     task_ids = torch.argmax(probs, dim=1).cpu().numpy()
     max_prob = torch.max(probs, dim=1).values.cpu().numpy()
     task_ids = np.where(max_prob > prob_threshold, task_ids, -1)
+    prob_avg = [0.0 for _ in range(len(assets.tasks))]
 
     combined_task_pcls = [_new_cloud(0) for _ in assets.tasks]
     for task_id in range(len(assets.tasks)):
@@ -456,6 +461,8 @@ def bayesian_task_clouds(
             combined_task_pcls[task_id].mutable_xyzs()[:] = task_points.T
             combined_task_pcls[task_id].mutable_rgbs()[0] = 255 * task_id / len(assets.tasks)
             combined_task_pcls[task_id].mutable_rgbs()[2] = 255 * (1 - task_id / len(assets.tasks))
+        prob_avg[task_id] = np.mean(max_prob[indices])
+        print(f'# pts in task {task_id} -> {combined_task_pcls[task_id].size()}, avg prob: {prob_avg[task_id]}')
 
     task_clusters = []
     for task_id in range(len(assets.tasks)):

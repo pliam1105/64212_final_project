@@ -8,8 +8,12 @@ from pydrake.math import RigidTransform
 from pydrake.multibody.inverse_kinematics import InverseKinematics
 from pydrake.solvers import Solve
 
-from .scene_setup import SimulationState
-from .controllers import make_trajectory
+import os
+import sys
+sys.path.append(os.path.abspath(__file__))
+
+from scene_setup import SimulationState
+from controllers import make_trajectory
 
 
 def _solve_ik(

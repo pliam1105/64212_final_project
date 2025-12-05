@@ -299,7 +299,9 @@ def build_station_setup(
     integrator = None
     controller = None
     if use_velocity_control:
-        from .controllers import PseudoInverseController
+        import sys
+        sys.path.append(os.path.abspath(__file__))
+        from controllers import PseudoInverseController
 
         velocity_source = (
             builder.AddSystem(TrajectorySource(traj_V_G))

@@ -43,9 +43,10 @@ def find_best_antipodal_grasp(
     min_total_cost = np.inf
     best_grasp_pose = None
 
-    for task_cluster in task_clusters:
+    for task_id, task_cluster in enumerate(task_clusters):
         if task_cluster.size() == 0:
             continue
+        meshcat.SetObject(f"task_cluster_{task_id}", task_cluster, point_size=0.003)
         rng = np.random.default_rng()
         min_cost = np.inf
         task_grasp_pose = None
