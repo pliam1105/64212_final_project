@@ -26,7 +26,7 @@ from scene_setup import (
 
 from pydrake.math import RigidTransform, RotationMatrix
 
-device = "cuda:0"  # Change to "cpu" if no GPU is available.
+device = "cpu"  # Change to "cpu" if no GPU is available.
 
 
 def main() -> None:
@@ -66,9 +66,9 @@ def main() -> None:
     )
 
     # Perception pipeline (uses teleporting joint targets even under velocity control).
-    simple_clusters, _, concat_pcd = simple_sam_clip_pipeline(
-        sim_state, camera, q_checkpoints, assets, dt=dt
-    )
+    # simple_clusters, _, concat_pcd = simple_sam_clip_pipeline(
+    #     sim_state, camera, q_checkpoints, assets, dt=dt
+    # )
 
     multiview_data = collect_multiview_data(
         sim_state, camera, q_checkpoints, assets, dt=dt
