@@ -1,7 +1,7 @@
 directives:
 - add_model:
     name: drawer
-    file: file:////home/pliam/Desktop/PROJECTS/64212_final_project/drawer.urdf
+    file: file:////home/pliam/Desktop/PROJECTS/64212_final_project/src/integration/drawer.urdf
     default_joint_positions:
         base_drawer_joint: [0.0]
 - add_weld:

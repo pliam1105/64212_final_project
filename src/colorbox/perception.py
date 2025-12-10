@@ -19,9 +19,11 @@ from pydrake.all import BaseField, Concatenate, Fields, PointCloud
 import os
 import sys
 sys.path.append(os.path.abspath(__file__))
+os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 from camera_system import CameraSystem
 from scene_setup import SimulationState
+import matplotlib.pyplot as plt
 
 
 @dataclass
@@ -29,6 +31,7 @@ class PerceptionAssets:
     mask_generator: FastSAM
     clip_model: torch.nn.Module
     preprocess: any
+    postprocess: any
     tasks: np.ndarray
     task_embeddings: np.ndarray
     normalized_task_embeddings: np.ndarray
@@ -59,10 +62,43 @@ def load_perception_assets(
         mask_generator=mask_generator,
         clip_model=clip_model,
         preprocess=preprocess,
+        postprocess=None,
         tasks=tasks,
         task_embeddings=task_embeddings,
         normalized_task_embeddings=normalized_task_embeddings,
         task_embeddings_torch=task_embeddings_torch,
+        device=device,
+    )
+
+def load_sam3(
+    task_list_path: str | Path = "task_list.txt",
+    sam3_token: str = "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",
+    device: str = "cuda",
+) -> PerceptionAssets:
+    from sam3.model_builder import build_sam3_image_model
+    from sam3.model.sam3_image_processor import Sam3Processor
+    from sam3.eval.postprocessors import PostProcessImage
+    model = build_sam3_image_model()
+    processor = Sam3Processor(model)
+    postprocessor = PostProcessImage(
+        max_dets_per_img=-1,
+        iou_type="segm",
+        use_original_sizes_box=True,
+        use_original_sizes_mask=True,
+        convert_mask_to_rle=False,
+        detection_threshold=0.0,
+        to_cpu=False,
+    )
+    tasks = np.genfromtxt(task_list_path, delimiter="\n", dtype=str)
+    return PerceptionAssets(
+        mask_generator=processor,
+        clip_model=None,
+        preprocess=None,
+        postprocess=postprocessor,
+        tasks=tasks,
+        task_embeddings=None,
+        normalized_task_embeddings=None,
+        task_embeddings_torch=None,
         device=device,
     )
 
@@ -158,6 +194,26 @@ def simple_sam_clip_pipeline(
         depth_im = camera.depth_im
         camera_pose = camera.X_WC.GetAsMatrix4()
 
+        x_coords, y_coords = np.meshgrid(
+            np.arange(rgb_im.shape[0]),
+            np.arange(rgb_im.shape[1]),
+            indexing="ij",
+        )
+        x_coords = x_coords.reshape(-1)
+        y_coords = y_coords.reshape(-1)
+        depths = np.vstack([x_coords, y_coords, depth_im.reshape(-1)]).T
+        depths = depths[np.where(depths[:, 2] != 10.0)[0]]
+        pcl = camera.project_depth_to_pC(depths)
+        homogeneous_pcl = np.vstack([pcl.T, np.ones((len(pcl)))])
+        global_pcl = (camera_pose @ homogeneous_pcl).T
+        global_pcl = global_pcl[:, :3] / global_pcl[:, 3:]
+
+        pcd = _new_cloud(len(global_pcl))
+        pcd.mutable_xyzs()[:] = global_pcl.T
+        pcd.mutable_rgbs()[:] = np.array([[0, 0, 255]] * len(global_pcl)).T
+        pcd = _voxel_downsample(pcd, voxel_size)
+        concat_pcd = Concatenate([concat_pcd, pcd])
+
         sam_results = mask_generator(rgb_im)
         masks = sam_results[0].masks
         for mask in masks:
@@ -174,7 +230,7 @@ def simple_sam_clip_pipeline(
             pcd.mutable_xyzs()[:] = global_pcl.T
             pcd.mutable_rgbs()[:] = np.array([[0, 0, 255]] * len(global_pcl)).T
             pcd = _voxel_downsample(pcd, voxel_size)
-            concat_pcd = Concatenate([concat_pcd, pcd])
+            # concat_pcd = Concatenate([concat_pcd, pcd])
 
             cropped_img = cropped_mask(rgb_im, mask_2d)
             img_emb = get_clip_embedding(cropped_img, assets).cpu().numpy()
@@ -189,6 +245,101 @@ def simple_sam_clip_pipeline(
                 num_clusters[task_id] * prob_avg[task_id] + cos_scores[task_id]
             ) / (num_clusters[task_id] + 1)
             num_clusters[task_id] += 1
+
+    concat_pcd = _voxel_downsample(concat_pcd, voxel_size)
+    task_clusters = []
+    for task_id in range(len(tasks)):
+        clustered = _cluster_cloud(combined_task_pcls[task_id], eps=cluster_dist, min_points=10)
+        if clustered.size() > 0 and combined_task_pcls[task_id].size() > 0:
+            clustered.mutable_rgbs()[0] = combined_task_pcls[task_id].rgbs()[0, 0]
+            clustered.mutable_rgbs()[1] = combined_task_pcls[task_id].rgbs()[1, 0]
+            clustered.mutable_rgbs()[2] = combined_task_pcls[task_id].rgbs()[2, 0]
+        task_clusters.append(clustered)
+
+    return task_clusters, combined_task_pcls, concat_pcd
+
+def sam3_pipeline(
+    sim_state: SimulationState,
+    camera: CameraSystem,
+    q_checkpoints: np.ndarray,
+    assets: PerceptionAssets,
+    dt: float = 0.5,
+    confidence_threshold: float = 0.05,
+    cluster_dist: float = 0.01,
+    voxel_size: float = 0.005,
+) -> tuple[list[PointCloud], list[PointCloud], PointCloud]:
+    tasks = assets.tasks
+    mask_generator = assets.mask_generator
+    postprocessor = assets.postprocess
+
+    combined_task_pcls = [_new_cloud(0) for _ in range(len(tasks))]
+    prob_avg = [0.0 for _ in range(len(tasks))]
+    num_clusters = [0 for _ in range(len(tasks))]
+    concat_pcd = _new_cloud(0)
+
+    for q in q_checkpoints:
+        sim_state.set_arm_configuration(q)
+        sim_state.advance(dt)
+        camera.update_camera_feed()
+        camera.update_camera_pos()
+
+        rgb_im = camera.rgb_im[:, :, :3]
+        depth_im = camera.depth_im
+        camera_pose = camera.X_WC.GetAsMatrix4()
+
+        x_coords, y_coords = np.meshgrid(
+            np.arange(rgb_im.shape[0]),
+            np.arange(rgb_im.shape[1]),
+            indexing="ij",
+        )
+        x_coords = x_coords.reshape(-1)
+        y_coords = y_coords.reshape(-1)
+        depths = np.vstack([x_coords, y_coords, depth_im.reshape(-1)]).T
+        depths = depths[np.where(depths[:, 2] != 10.0)[0]]
+        pcl = camera.project_depth_to_pC(depths)
+        homogeneous_pcl = np.vstack([pcl.T, np.ones((len(pcl)))])
+        global_pcl = (camera_pose @ homogeneous_pcl).T
+        global_pcl = global_pcl[:, :3] / global_pcl[:, 3:]
+
+        pcd = _new_cloud(len(global_pcl))
+        pcd.mutable_xyzs()[:] = global_pcl.T
+        pcd.mutable_rgbs()[:] = np.array([[0, 0, 255]] * len(global_pcl)).T
+        pcd = _voxel_downsample(pcd, voxel_size)
+        concat_pcd = Concatenate([concat_pcd, pcd])
+
+        for task_id in range(len(tasks)):
+            inference_state = mask_generator.set_image(Image.fromarray(rgb_im))
+            output = mask_generator.set_text_prompt(state=inference_state, prompt=tasks[task_id])
+            # output = postprocessor.process_results(output, None)
+            masks, boxes, scores = output["masks"], output["boxes"], output["scores"]
+            # print(masks.shape)
+            for mask, score in zip(masks, scores):
+                # print(mask)
+                # print(torch.where(mask))
+                mask_2d = mask.data.cpu()[0,:,:].numpy().astype(np.uint8)
+                # print(mask.shape)
+                # print(mask)
+                # print(rgb_im.shape)
+                mask_2d = cv2.resize(mask_2d, (rgb_im.shape[1], rgb_im.shape[0]))
+                # plt.imshow(mask_2d)
+                # plt.show()
+                pixels = np.where(mask_2d == 1)
+                if pixels[0].size == 0 or score < confidence_threshold:
+                    continue
+                # print(pixels)
+                depths = np.vstack([pixels[0], pixels[1], depth_im[pixels]]).T
+                pcl = camera.project_depth_to_pC(depths)
+                homogeneous_pcl = np.vstack([pcl.T, np.ones((len(pcl)))])
+                global_pcl = (camera_pose @ homogeneous_pcl)[:3, :].T
+                pcd = _new_cloud(len(global_pcl))
+                pcd.mutable_xyzs()[:] = global_pcl.T
+                pcd.mutable_rgbs()[:] = np.array([[0, 0, 255]] * len(global_pcl)).T
+                pcd = _voxel_downsample(pcd, voxel_size)
+                # concat_pcd = Concatenate([concat_pcd, pcd])
+                pcd.mutable_rgbs()[0] = 255 * task_id / len(tasks)
+                pcd.mutable_rgbs()[2] = 255 * (1 - task_id / len(tasks))
+                combined_task_pcls[task_id] = Concatenate([combined_task_pcls[task_id], pcd])
+                num_clusters[task_id] += 1
 
     concat_pcd = _voxel_downsample(concat_pcd, voxel_size)
     task_clusters = []
@@ -373,7 +524,7 @@ YES_MEAN = 0.27
 YES_STD_DEV = 0.035
 NO_MEAN = 0.20
 NO_STD_DEV = 0.035
-PRIOR = 0.5
+PRIOR = 0.2
 
 NUM_TASKS = len(np.genfromtxt(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "task_list.txt"), delimiter="\n", dtype=str))
 
@@ -403,7 +554,7 @@ def bayesian_task_clouds(
     assets: PerceptionAssets,
     cluster_dist: float = 0.025,
     occlusion_threshold: float = 0.01,
-    prob_threshold: float = 1.0/NUM_TASKS+0.1,
+    prob_threshold: float = 0.95,
 ) -> tuple[list[PointCloud], PointCloud, np.ndarray]:
     concat_pcd = data.concat_pcd
     probs = torch.full((concat_pcd.size(), len(assets.tasks)), PRIOR, device=assets.device)

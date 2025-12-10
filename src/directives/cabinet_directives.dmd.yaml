@@ -1,4 +1,0 @@
-directives:
-- add_model:
-    name: cabinet
-    file: file:////home/pliam/Desktop/PROJECTS/64212_final_project/src/toolbox/toolbox.urdf

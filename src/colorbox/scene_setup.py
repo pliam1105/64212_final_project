@@ -208,6 +208,9 @@ def add_free_boxes_for_drawer(parser: MBParser, n_boxes: int = 3) -> None:
         np.array([0.2, 1.0, 0.2, 1.0]),
         np.array([0.2, 0.2, 1.0, 1.0]),
         np.array([1.0, 1.0, 0.2, 1.0]),
+        np.array([0.0, 1.0, 1.0, 1.0]),
+        np.array([1.0, 0.5, 0.2, 1.0]),
+        np.array([1.0, 0.0, 1.0, 1.0]),
     ]
 
     z0 = 0.10
@@ -259,7 +262,7 @@ class StationDiagram:
 
 def build_station_setup(
     meshcat=None,
-    n_free_boxes: int = 3,
+    n_free_boxes: int = 6,
     use_velocity_control: bool = False,
     traj_V_G=None,
     traj_wsg_command=None,
@@ -460,6 +463,9 @@ def initialize_drawer_boxes(
             np.array([0.00, -0.10, -0.15]),
             np.array([0.10, -0.10, -0.15]),
             np.array([-0.10, -0.10, -0.15]),
+            np.array([0.02, -0.2, -0.15]),
+            np.array([-0.02, -0.2, -0.15]),
+            np.array([0.0, -0.2, -0.15]),
         ]
 
     plant = sim_state.plant

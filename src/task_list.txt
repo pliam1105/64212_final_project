@@ -1,3 +1,6 @@
 grab red box
 grab green box
 grab blue box
+grab cyan box
+grab yellow box
+grab orange box

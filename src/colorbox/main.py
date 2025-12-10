@@ -17,6 +17,8 @@ from perception import (
     cosine_average_task_clouds,
     load_perception_assets,
     simple_sam_clip_pipeline,
+    sam3_pipeline,
+    load_sam3
 )
 from scene_setup import (
     build_simulation,
@@ -26,7 +28,7 @@ from scene_setup import (
 
 from pydrake.math import RigidTransform, RotationMatrix
 
-device = "cuda:0"  # Change to "cpu" if no GPU is available.
+device = "cpu"  # Change to "cpu" if no GPU is available.
 
 
 def main() -> None:
@@ -35,10 +37,11 @@ def main() -> None:
     initialize_drawer_boxes(sim_state)
 
     # Warm start the simulation.
-    sim_state.advance(2.0)
+    sim_state.advance(4.0)
 
     camera = CameraSystem(0, sim_state.diagram, sim_state.diagram_context)
-    assets = load_perception_assets(device=device)
+    # assets = load_perception_assets(device=device)
+    assets = load_sam3(device=device)
 
     dt = 0.5
     q_checkpoints = np.array(
@@ -66,21 +69,27 @@ def main() -> None:
     )
 
     # Perception pipeline (uses teleporting joint targets even under velocity control).
-    simple_clusters, _, concat_pcd = simple_sam_clip_pipeline(
+    # simple_clusters, _, concat_pcd = simple_sam_clip_pipeline(
+    #     sim_state, camera, q_checkpoints, assets, dt=dt
+    # )
+
+    # multiview_data = collect_multiview_data(
+    #     sim_state, camera, q_checkpoints, assets, dt=dt
+    # )
+    # cosine_clusters, concat_pcd_mv, _ = cosine_average_task_clouds(
+    #     multiview_data, camera, assets.tasks
+    # )
+    # bayes_clusters, concat_pcd_mv, probs = bayesian_task_clouds(
+    #     multiview_data, camera, assets
+    # )
+
+    sam3_clusters, _, concat_pcd = sam3_pipeline(
         sim_state, camera, q_checkpoints, assets, dt=dt
     )
 
-    multiview_data = collect_multiview_data(
-        sim_state, camera, q_checkpoints, assets, dt=dt
-    )
-    cosine_clusters, concat_pcd_mv, _ = cosine_average_task_clouds(
-        multiview_data, camera, assets.tasks
-    )
-    bayes_clusters, _, probs = bayesian_task_clouds(
-        multiview_data, camera, assets
-    )
-
-    grasp_pose = find_best_antipodal_grasp(bayes_clusters, concat_pcd_mv, sim_state.meshcat)
+    # grasp_pose = find_best_antipodal_grasp(bayes_clusters, concat_pcd_mv, sim_state.meshcat)
+    # grasp_pose = find_best_antipodal_grasp(simple_clusters, concat_pcd, sim_state.meshcat)
+    grasp_pose = find_best_antipodal_grasp(sam3_clusters, concat_pcd, sim_state.meshcat)
     if grasp_pose is None:
         print("No grasp pose found. Check segmentation results and thresholds.")
         return
