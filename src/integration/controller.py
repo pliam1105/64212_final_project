@@ -129,20 +129,29 @@ class VwgSwitcher(LeafSystem):
     For t < switch_time:  use trajectory V_WG
     For t >= switch_time: use compliant V_WG
     """
-    def __init__(self, switch_time: float):
+    def __init__(self, switch_time1: float, switch_time2: float):
         super().__init__()
-        self._switch_time = switch_time
+        self._switch_time1 = switch_time1
+        self._switch_time2 = switch_time2
 
         self._traj_port = self.DeclareVectorInputPort("V_WG_traj", 6)
         self._comp_port = self.DeclareVectorInputPort("V_WG_compliant", 6)
         self.DeclareVectorOutputPort("V_WG", 6, self.CalcOutput)
+    
+    def set_switch_times(self, switch_time1: float, switch_time2: float) -> None:
+        self._switch_time1 = switch_time1
+        self._switch_time2 = switch_time2
 
     def CalcOutput(self, context, output: BasicVector) -> None:
-        t = context.get_time()
-        if t < self._switch_time:
-            V = self._traj_port.Eval(context)
-        else:
-            
-            V = self._comp_port.Eval(context)
-            # print("TEST: ", V)
+        # t = context.get_time()
+        # if t < self._switch_time1:
+        #     V = self._traj_port.Eval(context)
+        # elif t < self._switch_time2:
+        #     print("COMPLIANT MODE: ", t)
+        #     V = self._comp_port.Eval(context)
+        # else:
+        #     V = self._traj_port.Eval(context)
+        #     print("Traj: ", t)
+        V = self._traj_port.Eval(context)
+
         output.SetFromVector(V)

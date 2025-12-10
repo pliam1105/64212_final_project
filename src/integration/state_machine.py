@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional
+import time
 
 from pydrake.math import RigidTransform, RotationMatrix
 from pydrake.systems.framework import Diagram, DiagramBuilder
@@ -10,6 +11,11 @@ from open_drawer import open_drawer, plan_open_drawer
 import numpy as np
 from pydrake.all import Integrator, Simulator, PiecewisePolynomial, TrajectorySource, ConstantVectorSource
 from controller import PseudoInverseController, CompliantPullCommand, VwgSwitcher
+from camera_system import CameraSystem
+from perception import load_perception_assets, collect_multiview_data, cosine_average_task_clouds, bayesian_task_clouds
+from grasp_planning import find_best_antipodal_grasp
+
+device = "cpu"  # Change to "cpu" if no GPU is available.
 
 
 class StateMachine:
@@ -63,7 +69,7 @@ class StateMachine:
         builder.Connect(self.station_system.GetOutputPort("iiwa.torque_measured"), self.pull_cmd.get_input_port(1))
 
         # Switcher placeholder (switch time will be set when trajectories are known)
-        self.switcher = builder.AddSystem(VwgSwitcher(switch_time=1.0))
+        self.switcher = builder.AddSystem(VwgSwitcher(switch_time1=1.0, switch_time2=1000.0))
         builder.Connect(self.V_G_source.get_output_port(), self.switcher.get_input_port(0))
         builder.Connect(self.pull_cmd.get_output_port(), self.switcher.get_input_port(1))
 
@@ -99,12 +105,16 @@ class StateMachine:
         # initial state and storage
         self.state = "preRANSAC"
         self.camera_point_cloud = None
-        self.home_q = None
+
+
+        self.assets = load_perception_assets(device=device)
+        self.camera = CameraSystem(0, self.diagram, self.context)
         return
 
     def step(self) -> str:
         """Run the actions for the current state and (optionally)
         transition to the next state.
+        preRANSAC -> open_drawer -> SAM
 
         Returns the name of the new state after stepping.
         """
@@ -112,8 +122,8 @@ class StateMachine:
             return self._enter_preRANSAC()
         elif self.state == "open_drawer":
             return self._enter_open_drawer()
-        elif self.state == "home":
-            return self._enter_home()
+        elif self.state == "SAM":
+            return self._enter_SAM()
         else:
             return self.state
 
@@ -162,7 +172,7 @@ class StateMachine:
             raise RuntimeError("Camera point cloud not available; run preRANSAC first.")
 
         # Plan trajectories using the perception result (no new diagram)
-        traj_V_G, traj_wsg_command, switch_time, pull_params = plan_open_drawer(
+        traj_V_G, traj_wsg_command, switch_time1, pull_params = plan_open_drawer(
             station=self.station, pc=self.camera_point_cloud, meshcat=self.meshcat,
             diagram_context=self.context
         )
@@ -183,7 +193,7 @@ class StateMachine:
         # Set the switch time on the VwgSwitcher instance
         # (the switcher stores it as a Python attribute)
         try:
-            self.switcher._switch_time = switch_time
+            self.switcher._switch_time1 = switch_time1
         except Exception:
             # best-effort; continue even if attribute assignment fails
             raise RuntimeWarning("Could not set switch_time on VwgSwitcher instance")
@@ -197,106 +207,87 @@ class StateMachine:
 
         # Record current absolute time and advance the persistent simulator
         start_time = self.context.get_time()
-        total_duration = traj_V_G.end_time() + 100.0
+        total_duration = traj_V_G.end_time() + 10.0
         target_time = start_time + total_duration
         print(f"[StateMachine.open_drawer] Advancing simulator from {start_time:.3f} to {target_time:.3f}")
 
         if self.meshcat:
             self.meshcat.StartRecording()
         self.simulator.AdvanceTo(target_time)
-        if self.meshcat:
-            self.meshcat.StopRecording()
-            self.meshcat.PublishRecording()
+        # if self.meshcat:
+        #     self.meshcat.StopRecording()
+        #     self.meshcat.PublishRecording()
 
-        # Store home position (current initial IIWA config)
-        # temp_context = self.station.CreateDefaultContext()
-        # temp_plant_context = plant.GetMyContextFromRoot(temp_context)
-        temp_plant_context = plant.GetMyContextFromRoot(self.context)
-        iiwa_model = plant.GetModelInstanceByName("iiwa")
-        self.home_q = plant.GetPositions(temp_plant_context, iiwa_model)
-
-        self.state = "home"
+        self.state = "SAM"
         return self.state
 
-    def _enter_home(self) -> str:
-        """Return the arm to the initial home position using the persistent simulator.
+    def _enter_SAM(self) -> str:
+        """Move manipulator through q_checkpoints, capture point clouds at each pose.
         
-        Updates the V_G trajectory source to a simple motion back to home position,
-        then advances the persistent simulator.
+        Similar to collect_multiview_data in perception.py, but uses the persistent
+        simulator and directly accesses the plant context instead of SimulationState.
         """
-        if self.home_q is None:
-            raise RuntimeError("Home position not captured; run open_drawer first.")
+        from pydrake.all import Concatenate, BaseField, Fields
         
-        plant = self.station.GetSubsystemByName("plant")
-        # temp_context = self.station.CreateDefaultContext()
-        # temp_plant_context = plant.GetMyContextFromRoot(temp_context)
-        temp_plant_context = plant.GetMyContextFromRoot(self.context)
+        # Define checkpoint configurations for multiview capture
+        q_checkpoints = np.array([
+            # [0, 0, 0, 0, 0, 0, 0],  # default/current
+            [-np.pi/4, np.pi/3, -np.pi/6, -np.pi/3, 0, np.pi/3, 0],         # checkpoint 1
+            [-np.pi/3, np.pi/5, np.pi/6, -np.pi/4, 0, np.pi/4, np.pi/4],    # checkpoint 2
+        ])
         
-        # Current gripper pose from plant context
-        wsg_body = plant.GetBodyByName("body")
-        X_WG_current = plant.EvalBodyPoseInWorld(temp_plant_context, wsg_body)
+        # Configure VwgSwitcher for SAM mode: trajectory-only (no compliant pull)
+        # Use absolute times: set switch_time2 to a very large value so we stay in trajectory mode
+        current_time = self.context.get_time()
+        self.switcher.set_switch_times(
+            switch_time1= self.switcher._switch_time1,  # Don't switch at all during SAM
+            switch_time2= current_time
+        )
+        # print(f"[_enter_SAM] Configured VwgSwitcher for trajectory-only (t={current_time:.1f} to t={current_time+sam_duration:.1f})")
         
-        # Compute home gripper pose using forward kinematics
-        plant.SetPositions(temp_plant_context, plant.GetModelInstanceByName("iiwa"), self.home_q)
-        X_WG_home = plant.EvalBodyPoseInWorld(temp_plant_context, wsg_body)
+        # Start MeshCat recording for SAM phase visualization
+        # if self.meshcat:
+        #     self.meshcat.StartRecording()
+        #     print("[_enter_SAM] Started MeshCat recording")
         
-        # Create trajectory from current to home (3 second duration)
-        from pydrake.all import PiecewisePose
-        sample_times = [0.0, 3.0]
-        keyframes = [X_WG_current, X_WG_home]
+        multiview_data = collect_multiview_data(
+            integrator=self.integrator,
+            diagram=self.diagram,
+            context=self.context,
+            simulator=self.simulator,
+            camera=self.camera,
+            q_checkpoints=q_checkpoints,
+            assets=self.assets,
+            dt=0.5,
+            station_system=self.station_system,
+            V_G_source=self.V_G_source,
+            wsg_source=self.wsg_source,
+        )
         
-        robot_position_trajectory = PiecewisePose.MakeLinear(sample_times, keyframes)
-        traj_V_G = robot_position_trajectory.MakeDerivative()
+        # Stop recording and publish
+        # if self.meshcat:
+        #     self.meshcat.StopRecording()
+        #     self.meshcat.PublishRecording()
+
+
+        cosine_clusters, concat_pcd_mv, _ = cosine_average_task_clouds(
+            multiview_data, self.camera, self.assets.tasks
+        )
+        bayes_clusters, _, probs = bayesian_task_clouds(
+            multiview_data, self.camera, self.assets
+        )
+
+        grasp_pose = find_best_antipodal_grasp(bayes_clusters, concat_pcd_mv, self.meshcat)
+        if grasp_pose is None:
+            print("No grasp pose found. Check segmentation results and thresholds.")
+            return
+
+        print("Found feasible grasp pose:", grasp_pose)
+
         
-        # Update the persistent V_G_source trajectory
-        try:
-            self.V_G_source.UpdateTrajectory(traj_V_G)
-        except Exception as e:
-            raise RuntimeError(f"Could not update V_G trajectory for home: {e}")
-        
-        # Update switcher to not switch (stay with trajectory throughout)
-        # Home motion is just a simple trajectory, no compliant pull phase
-        try:
-            self.switcher._switch_time = traj_V_G.end_time() + 10.0  # Never switch
-        except Exception:
-            pass  # best-effort
-        
-        # Initialize integrator to current IIWA positions
-        plant_ctx = self.diagram.GetMutableSubsystemContext(plant, self.context)
-        q0 = plant.GetPositions(plant_ctx, plant.GetModelInstanceByName("iiwa"))
-        integ_ctx = self.integrator.GetMyContextFromRoot(self.context)
-        self.integrator.set_integral_value(integ_ctx, q0)
-        
-        # Advance simulator
-        start_time = self.context.get_time()
-        target_time = start_time + traj_V_G.end_time()
-        print(f"[StateMachine.home] Returning to home position over {traj_V_G.end_time():.1f} seconds")
-        
-        if self.meshcat:
-            self.meshcat.StartRecording()
-        self.simulator.AdvanceTo(target_time)
-        if self.meshcat:
-            self.meshcat.StopRecording()
-            self.meshcat.PublishRecording()
-        
-        print("[home] Arrived at home position")
         self.state = "done"
         return self.state
 
     def _create_new_builder_for_execution(self):
         """Helper to create a fresh DiagramBuilder for execution."""
         return DiagramBuilder()
-
-
-def example_usage(meshcat=None):
-    """Small helper showing how to use the state machine."""
-    sm = StateMachine(meshcat=meshcat)
-    print("initial state:", sm.state)
-    sm.step()  # runs preRANSAC
-    print("after preRANSAC state:", sm.state)
-    sm.step()  # runs open_drawer
-    print("after open_drawer state:", sm.state)
-    sm.step()  # runs home
-    print("after home state:", sm.state)
-    # State machine is now in 'done' state
-    return sm

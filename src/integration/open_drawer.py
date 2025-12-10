@@ -167,6 +167,8 @@ def plan_open_drawer(
     R_z = RotationMatrix.MakeZRotation(angle)
     drawer_pregrasp_rotated = drawer_grasp @ RigidTransform(R_z, [-0.1, 0.0, 0.0])
     drawer_grasp_rotated = drawer_grasp @ RigidTransform(R_z, [0.05, 0.0, 0.0])
+    drawer_postgrasp_rotated = drawer_grasp @ RigidTransform(R_z, [0.2, 0.0, 0.0])
+    drawer_leave = drawer_grasp @ RigidTransform(R_z, [0.3, 0.0, 0.0])
 
     opened = 0.08
     closed = -0.1
@@ -176,6 +178,10 @@ def plan_open_drawer(
         (drawer_pregrasp_rotated, opened),
         (drawer_grasp_rotated, opened),
         (drawer_grasp_rotated, closed),
+        (drawer_postgrasp_rotated, closed),
+        (drawer_postgrasp_rotated, opened),
+        (drawer_leave, opened),
+
     ]
 
     sample_times = [3 * i for i in range(len(keyframes))]
