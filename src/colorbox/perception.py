@@ -174,7 +174,7 @@ def simple_sam_clip_pipeline(
     cosine_threshold: float = 0.2,
     cluster_dist: float = 0.01,
     voxel_size: float = 0.005,
-) -> tuple[list[PointCloud], list[PointCloud], PointCloud]:
+) -> tuple[list[PointCloud], list[PointCloud], PointCloud, list[int]]:
     tasks = assets.tasks
     mask_generator = assets.mask_generator
     normalized_tasks = assets.normalized_task_embeddings
@@ -248,6 +248,7 @@ def simple_sam_clip_pipeline(
 
     concat_pcd = _voxel_downsample(concat_pcd, voxel_size)
     task_clusters = []
+    task_ids = []
     for task_id in range(len(tasks)):
         clustered = _cluster_cloud(combined_task_pcls[task_id], eps=cluster_dist, min_points=10)
         if clustered.size() > 0 and combined_task_pcls[task_id].size() > 0:
@@ -255,8 +256,9 @@ def simple_sam_clip_pipeline(
             clustered.mutable_rgbs()[1] = combined_task_pcls[task_id].rgbs()[1, 0]
             clustered.mutable_rgbs()[2] = combined_task_pcls[task_id].rgbs()[2, 0]
         task_clusters.append(clustered)
+        task_ids.append(task_id)
 
-    return task_clusters, combined_task_pcls, concat_pcd
+    return task_clusters, combined_task_pcls, concat_pcd, task_ids
 
 def sam3_pipeline(
     sim_state: SimulationState,
@@ -267,7 +269,7 @@ def sam3_pipeline(
     confidence_threshold: float = 0.05,
     cluster_dist: float = 0.01,
     voxel_size: float = 0.005,
-) -> tuple[list[PointCloud], list[PointCloud], PointCloud]:
+) -> tuple[list[PointCloud], list[PointCloud], PointCloud, list[int]]:
     tasks = assets.tasks
     mask_generator = assets.mask_generator
     postprocessor = assets.postprocess
@@ -343,6 +345,7 @@ def sam3_pipeline(
 
     concat_pcd = _voxel_downsample(concat_pcd, voxel_size)
     task_clusters = []
+    task_ids = []
     for task_id in range(len(tasks)):
         clustered = _cluster_cloud(combined_task_pcls[task_id], eps=cluster_dist, min_points=10)
         if clustered.size() > 0 and combined_task_pcls[task_id].size() > 0:
@@ -350,8 +353,9 @@ def sam3_pipeline(
             clustered.mutable_rgbs()[1] = combined_task_pcls[task_id].rgbs()[1, 0]
             clustered.mutable_rgbs()[2] = combined_task_pcls[task_id].rgbs()[2, 0]
         task_clusters.append(clustered)
+        task_ids.append(task_id)
 
-    return task_clusters, combined_task_pcls, concat_pcd
+    return task_clusters, combined_task_pcls, concat_pcd, task_ids
 
 
 @dataclass
@@ -445,7 +449,7 @@ def cosine_average_task_clouds(
     cosine_threshold: float = 0.2,
     cluster_dist: float = 0.01,
     occlusion_threshold: float = 0.01,
-) -> tuple[list[PointCloud], PointCloud, np.ndarray]:
+) -> tuple[list[PointCloud], PointCloud, np.ndarray, list[int]]:
     concat_pcd = data.concat_pcd
     cos_s = np.zeros((concat_pcd.size(), len(tasks)))
     num_emb = np.zeros((concat_pcd.size(),))
@@ -506,6 +510,7 @@ def cosine_average_task_clouds(
             combined_task_pcls[task_id].mutable_rgbs()[2] = 255 * (1 - task_id / len(tasks))
 
     task_clusters = []
+    task_ids = []
     for task_id in range(len(tasks)):
         clustered = _cluster_cloud(
             combined_task_pcls[task_id], eps=cluster_dist, min_points=10
@@ -515,8 +520,9 @@ def cosine_average_task_clouds(
             clustered.mutable_rgbs()[1] = combined_task_pcls[task_id].rgbs()[1, 0]
             clustered.mutable_rgbs()[2] = combined_task_pcls[task_id].rgbs()[2, 0]
         task_clusters.append(clustered)
+        task_ids.append(task_id)
 
-    return task_clusters, concat_pcd, cos_s
+    return task_clusters, concat_pcd, cos_s, task_ids
 
 
 torch_pi = torch.tensor(np.pi)
@@ -555,7 +561,7 @@ def bayesian_task_clouds(
     cluster_dist: float = 0.025,
     occlusion_threshold: float = 0.01,
     prob_threshold: float = 0.95,
-) -> tuple[list[PointCloud], PointCloud, np.ndarray]:
+) -> tuple[list[PointCloud], PointCloud, np.ndarray, list[int]]:
     concat_pcd = data.concat_pcd
     probs = torch.full((concat_pcd.size(), len(assets.tasks)), PRIOR, device=assets.device)
 
@@ -616,6 +622,7 @@ def bayesian_task_clouds(
         print(f'# pts in task {task_id} -> {combined_task_pcls[task_id].size()}, avg prob: {prob_avg[task_id]}')
 
     task_clusters = []
+    task_ids = []
     for task_id in range(len(assets.tasks)):
         clustered = _cluster_cloud(
             combined_task_pcls[task_id], eps=cluster_dist, min_points=3
@@ -625,5 +632,24 @@ def bayesian_task_clouds(
             clustered.mutable_rgbs()[1] = combined_task_pcls[task_id].rgbs()[1, 0]
             clustered.mutable_rgbs()[2] = combined_task_pcls[task_id].rgbs()[2, 0]
         task_clusters.append(clustered)
+        task_ids.append(task_id)
 
-    return task_clusters, concat_pcd, probs.cpu().numpy()
+    return task_clusters, concat_pcd, probs.cpu().numpy(), task_ids
+
+
+def evaluate_box_segmentation(plant, context, task_clusters, task_ids, mean_dist_thres=0.02, max_dist_thres=0.05, task_num = 6, strict_segmentation=True):
+    task_cluster_nums = [0 for _ in range(task_num)]
+    box_poses = []
+    for task_id in range(task_num):
+        box_model = plant.GetModelInstanceByName(f"box_{task_id+1}")
+        box_body = plant.GetBodyByName("base", box_model)
+        box_poses.append(box_body.EvalPoseInWorld(context).translation())
+    for task_cluster, task_id in zip(task_clusters, task_ids):
+        if task_cluster.size() == 0:
+            continue
+        cluster_centroid = np.mean(task_cluster.xyzs(), axis=1)
+        mean_cluster_dist = np.linalg.norm(cluster_centroid-box_poses[task_id])
+        max_cluster_dist = np.max(np.linalg.norm(task_cluster.xyzs()-box_poses[task_id].reshape(3,1), axis=0))
+        if mean_cluster_dist < mean_dist_thres and max_cluster_dist < max_dist_thres:
+            task_cluster_nums[task_id] += 1
+    return task_cluster_nums

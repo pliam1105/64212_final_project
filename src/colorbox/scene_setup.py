@@ -216,10 +216,10 @@ def add_free_boxes_for_drawer(parser: MBParser, n_boxes: int = 3) -> None:
     z0 = 0.10
     x0 = 0.55
     y0 = 0.0
-    offsets_xy = [(0.0, 0.0), (0.0, 0.06), (0.0, -0.06)]
+    offsets_xy = [(0.0, 0.0), (0.0, 0.06), (0.0, -0.06), (1.0, 0.0), (1.0, 0.06), (1.0, -0.06)]
 
     while len(offsets_xy) < n_boxes:
-        offsets_xy.append(offsets_xy[len(offsets_xy) % 3])
+        offsets_xy.append(offsets_xy[len(offsets_xy) % 6])
 
     for i in range(n_boxes):
         model = plant.AddModelInstance(f"box_{i + 1}")
@@ -463,10 +463,34 @@ def initialize_drawer_boxes(
             np.array([0.00, -0.10, -0.15]),
             np.array([0.10, -0.10, -0.15]),
             np.array([-0.10, -0.10, -0.15]),
-            np.array([0.02, -0.2, -0.15]),
-            np.array([-0.02, -0.2, -0.15]),
-            np.array([0.0, -0.2, -0.15]),
+            np.array([0.02, -0.15, -0.16]),
+            np.array([-0.02, -0.15, -0.16]),
+            np.array([0.0, -0.15, -0.16]),
         ]
+
+    plant = sim_state.plant
+    plant_context = sim_state.plant_context
+    cabinet = plant.GetModelInstanceByName("cabinet")
+    drawer_frame = plant.GetFrameByName("large_drawer_3", cabinet)
+    X_WD = plant.EvalBodyPoseInWorld(plant_context, drawer_frame.body())
+
+    for i, p_DB in enumerate(offsets, start=1):
+        box_model = plant.GetModelInstanceByName(f"box_{i}")
+        box_body = plant.GetBodyByName("base", box_model)
+        plant.SetFreeBodyPose(plant_context, box_body, X_WD @ RigidTransform(p_DB))
+
+def initialize_random_drawer_boxes(
+    sim_state: SimulationState, num_boxes:int = 6, limits: Sequence[np.ndarray] | None = None
+) -> None:
+    """Place the floating cubes inside the third drawer of the toolbox."""
+
+    if limits is None:
+        limits = [
+            np.array([-0.1, -0.2, -0.17]),
+            np.array([0.1, -0.1, -0.13]),
+        ]
+    
+    offsets = [np.random.uniform(low=limits[0], high=limits[1]) for _ in range(num_boxes)]
 
     plant = sim_state.plant
     plant_context = sim_state.plant_context

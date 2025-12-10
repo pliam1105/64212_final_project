@@ -44,7 +44,7 @@ def find_best_antipodal_grasp(
     best_grasp_pose = None
 
     for task_id, task_cluster in enumerate(task_clusters):
-        if task_cluster.size() == 0:
+        if task_cluster.size() <= 1:
             continue
         meshcat.SetObject(f"task_cluster_{task_id}", task_cluster, point_size=0.003)
         rng = np.random.default_rng()
@@ -58,13 +58,14 @@ def find_best_antipodal_grasp(
                 continue
             plant.SetFreeBodyPose(plant_context, gripper_body, pose)
             query_object = scene_graph.get_query_output_port().Eval(scene_graph_context)
-            for i in range(concat_pcd.size()):
-                distances = query_object.ComputeSignedDistanceToPoint(
-                    concat_pcd.xyz(i), threshold=margin
-                )
-                if distances:
-                    cost = np.inf
-                    break
+            if concat_pcd.size() != 0:
+                for i in range(concat_pcd.size()):
+                    distances = query_object.ComputeSignedDistanceToPoint(
+                        concat_pcd.xyz(i), threshold=margin
+                    )
+                    if distances:
+                        cost = np.inf
+                        break
             if np.isfinite(cost) and cost < min_cost:
                 min_cost = cost
                 task_grasp_pose = pose
@@ -78,3 +79,19 @@ def find_best_antipodal_grasp(
         )
         diagram.ForcedPublish(context)
     return best_grasp_pose
+
+def evaluate_box_grasp(
+    task_clusters,
+    task_ids,
+    concat_pcd,
+    meshcat,
+    task_num: int = 6,
+    num_iterations: int = 100,
+):
+    task_grasp_nums = [0 for _ in range(task_num)]
+    for task_cluster, task_id in zip(task_clusters, task_ids):
+        grasp_pose = find_best_antipodal_grasp([task_cluster], concat_pcd, meshcat)
+        if grasp_pose is not None:
+            task_grasp_nums[task_id] += 1
+
+    return task_grasp_nums

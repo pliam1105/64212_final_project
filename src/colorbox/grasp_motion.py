@@ -122,7 +122,7 @@ def execute_pick_and_place(
     # Stream trajectories through the pseudoinverse controller.
     dt = 0.05
     t = traj_velocity.start_time()
-    t_end = traj_velocity.end_time()
+    t_end = traj_velocity.end_time() + 5.0
     while t <= t_end + 1e-6:
         V_cmd = traj_velocity.value(t).ravel()
         wsg_cmd = traj_wsg_command.value(t)[0]
