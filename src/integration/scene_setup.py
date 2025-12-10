@@ -2,6 +2,11 @@ from pathlib import Path
 from pydrake.all import Context, Diagram, DiagramBuilder, Simulator, StartMeshcat
 from manipulation.station import AddPointClouds, LoadScenario, MakeHardwareStation
 import numpy as np
+from pydrake.multibody.parsing import Parser as MBParser
+from pydrake.multibody.tree import SpatialInertia, UnitInertia
+from pydrake.multibody.plant import CoulombFriction
+from pydrake.math import RigidTransform
+from pydrake.geometry import Box
 from pydrake.systems.primitives import ConstantVectorSource
 
 
@@ -21,7 +26,7 @@ TABLE_SDF = """<?xml version=\"1.0\"?>
       <visual name=\"visual\">
         <geometry>
           <box>
-            <size>2 2 0.1</size>
+            <size>4 3 0.1</size>
           </box>
         </geometry>
         <material>
@@ -195,9 +200,36 @@ def build_station_setup(
 
     scenario = LoadScenario(filename=str(scenario_path))
     builder = DiagramBuilder()
+
+    def parser_cb(parser: MBParser):
+        # Add a few small free-floating colored boxes inside the drawer
+        plant = parser.plant()
+        # box dimensions (m)
+        box_xyz = np.array([0.06, 0.06, 0.06])
+        mass = 0.05
+        unit_inertia = UnitInertia.SolidBox(*box_xyz)
+        spatial_inertia = SpatialInertia(mass=mass, p_PScm_E=[0.0, 0.0, 0.0], G_SP_E=unit_inertia)
+        box_shape = Box(*box_xyz)
+        friction = CoulombFriction(0.7, 0.5)
+
+        # placement offsets inside the drawer (relative to world)
+        z0 = 0.15
+        x0 = 0.0
+        y0 = 0.9
+        offsets_xy = [(0.00, -0.10), (0.15, -0.10), (-0.15, -0.10)]
+
+        for i, (dx, dy) in enumerate(offsets_xy, start=1):
+            model = plant.AddModelInstance(f"box_{i}")
+            body = plant.AddRigidBody("base", model, spatial_inertia)
+            p_WB = np.array([x0 + dx, y0 + dy, z0])
+            plant.SetDefaultFreeBodyPose(body, RigidTransform(p_WB))
+            plant.RegisterCollisionGeometry(body, RigidTransform(), box_shape, f"box_{i}_collision", friction)
+            plant.RegisterVisualGeometry(body, RigidTransform(), box_shape, f"box_{i}_visual", [0.8, 0.2 * i, 0.2, 1.0])
+
     station = MakeHardwareStation(
         scenario=scenario,
         meshcat=meshcat,
+        parser_prefinalize_callback=parser_cb,
     )
 
     station_system = builder.AddSystem(station)
